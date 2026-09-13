@@ -119,8 +119,16 @@ function updateStatus(){
    const ni=nextMeaningfulIndex(w,day,p+1);next.textContent=ni>=0?`第 ${ni+1} 節｜${getCellValue(w,ni,day)}`:"今天沒有下一節課";return;
  }
  const mins=now.getHours()*60+now.getMinutes();
+ const lastPeriodEnd=parseTime(periodRanges[periodRanges.length-1][1]);
  if(mins<parseTime(periodRanges[0][0])){label.textContent="今天";current.textContent="尚未開始上課";const ni=nextMeaningfulIndex(w,day,0);next.textContent=ni>=0?`第 ${ni+1} 節｜${getCellValue(w,ni,day)}`:"今天沒有排課"}
- else {label.textContent="今天";current.textContent="今天課程已結束";next.textContent="—"}
+ else if(mins>=lastPeriodEnd){label.textContent="今天";current.textContent="今天課程已結束";next.textContent="—"}
+ else {
+   // Passing period between two classes (not lunch, not inside any period range)
+   label.textContent="現在｜下課時間";current.textContent="下課中";
+   let ni=-1;for(let i=0;i<periodRanges.length;i++){if(parseTime(periodRanges[i][0])>mins){ni=i;break}}
+   const mi=ni>=0?nextMeaningfulIndex(w,day,ni):-1;
+   next.textContent=mi>=0?`第 ${mi+1} 節｜${getCellValue(w,mi,day)}`:"今天沒有下一節課";
+ }
 }
 function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
 function taskHtml(custom){
@@ -153,7 +161,7 @@ function render(){
    const base=String(p.cells[di]||"空堂").trim(),custom=getTasks()[taskKey(date,pi)],isCurrent=isToday&&pi===currentPeriodIndex(new Date()),empty=isEmptySlot(w,pi,di);
    const cls=`mobile-item ${isCurrent?"current ":""}${custom?"custom-task ":""}`;
    const content=custom?taskHtml({...custom,_key:taskKey(date,pi)}):escapeHtml(base);
-   return `<div class="${cls}" ${empty?`data-date="${date}" data-period="${pi}" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)" ondrop="dropTask(event)" onclick="tapEmptySlot('${date}',${pi})"`}><div class="mobile-time">第 ${p.no} 節<br>${p.time}</div><div class="mobile-class ${empty?"mobile-empty":""}">${content}${isCurrent?'<span class="mobile-badge">現在</span>':''}</div></div>`;
+   return `<div class="${cls}" ${empty?`data-date="${date}" data-period="${pi}" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)" ondrop="dropTask(event)" onclick="tapEmptySlot('${date}',${pi})"`:""}><div class="mobile-time">第 ${p.no} 節<br>${p.time}</div><div class="mobile-class ${empty?"mobile-empty":""}">${content}${isCurrent?'<span class="mobile-badge">現在</span>':''}</div></div>`;
  }).join("");
  mobile.innerHTML=`<div class="mobile-day-tabs">${dayNames.map((n,i)=>`<button class="day-tab ${i===selectedDay?"active":""} ${w.dates[i]===today?"is-today":""}" onclick="selectMobileDay(${i})">${n}<small>${dateLabel(w.dates[i])}</small></button>`).join("")}</div><section class="mobile-day ${isToday?"today":""}"><div class="mobile-day-head"><span>${dayNames[di]}</span><span>${dateLabel(date)}${isToday?' · 今天':''}</span></div>${items}</section>`;
  const isMobile=window.matchMedia("(max-width:700px)").matches || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
